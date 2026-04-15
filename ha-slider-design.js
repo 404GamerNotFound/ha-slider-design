@@ -192,6 +192,10 @@ class HaSliderDesignCard extends HTMLElement {
     });
   }
 
+  _stopEventPropagation(event) {
+    event.stopPropagation();
+  }
+
   render() {
     if (!this.config || !this._hass) return;
 
@@ -219,40 +223,40 @@ class HaSliderDesignCard extends HTMLElement {
         .card {
           position: relative;
           box-sizing: border-box;
-          border-radius: 32px;
-          padding: 24px;
+          border-radius: 24px;
+          padding: 16px;
           color: #ffffff;
           background: linear-gradient(180deg, ${this.config.background_start}, ${this.config.background_end});
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
           overflow: hidden;
           cursor: pointer;
           user-select: none;
         }
 
         .title {
-          font-size: 2rem;
+          font-size: 1.7rem;
           font-weight: 700;
           line-height: 1.2;
           text-align: center;
-          margin-bottom: 20px;
+          margin-bottom: 12px;
         }
 
         .slider-shell {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
           border-radius: 999px;
-          padding: 16px 18px;
-          border: 4px solid rgba(255,255,255,0.35);
+          padding: 10px 12px;
+          border: 3px solid rgba(255,255,255,0.35);
           background: ${this.config.track_color};
           backdrop-filter: blur(2px);
         }
 
         .icon-chip {
-          width: 70px;
-          height: 70px;
-          min-width: 70px;
-          border-radius: 24px;
+          width: 52px;
+          height: 52px;
+          min-width: 52px;
+          border-radius: 18px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -261,15 +265,15 @@ class HaSliderDesignCard extends HTMLElement {
         }
 
         .icon-chip ha-icon {
-          width: 34px;
-          height: 34px;
+          width: 26px;
+          height: 26px;
         }
 
         input[type="range"] {
           -webkit-appearance: none;
           appearance: none;
           width: 100%;
-          height: 16px;
+          height: 12px;
           border-radius: 999px;
           background: linear-gradient(90deg, ${this.config.track_inner_color} ${brightness}%, rgba(255,255,255,0.16) ${brightness}%);
           outline: none;
@@ -279,8 +283,8 @@ class HaSliderDesignCard extends HTMLElement {
         input[type="range"]::-webkit-slider-thumb {
           -webkit-appearance: none;
           appearance: none;
-          width: 28px;
-          height: 28px;
+          width: 24px;
+          height: 24px;
           border-radius: 50%;
           background: ${this.config.knob_color};
           border: none;
@@ -288,8 +292,8 @@ class HaSliderDesignCard extends HTMLElement {
         }
 
         input[type="range"]::-moz-range-thumb {
-          width: 28px;
-          height: 28px;
+          width: 24px;
+          height: 24px;
           border-radius: 50%;
           background: ${this.config.knob_color};
           border: none;
@@ -297,18 +301,18 @@ class HaSliderDesignCard extends HTMLElement {
         }
 
         .meta-row {
-          margin-top: 16px;
+          margin-top: 10px;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 10px;
+          gap: 8px;
           flex-wrap: wrap;
         }
 
         .chip {
           border-radius: 999px;
-          padding: 10px 20px;
-          font-size: 2rem;
+          padding: 6px 12px;
+          font-size: 0.9rem;
           font-weight: 700;
           letter-spacing: 0.02em;
           background: ${this.config.chip_background};
@@ -317,22 +321,22 @@ class HaSliderDesignCard extends HTMLElement {
         }
 
         .state-chip {
-          font-size: 0.95rem;
+          font-size: 0.82rem;
           font-weight: 600;
           opacity: 0.9;
         }
 
         .color-row {
-          margin-top: 14px;
+          margin-top: 10px;
           display: grid;
           grid-template-columns: 1fr auto;
-          gap: 12px;
+          gap: 10px;
           align-items: center;
         }
 
         .color-picker {
           width: 100%;
-          height: 38px;
+          height: 32px;
           border: 2px solid rgba(255,255,255,0.45);
           border-radius: 999px;
           overflow: hidden;
@@ -345,7 +349,8 @@ class HaSliderDesignCard extends HTMLElement {
           border-radius: 999px;
           color: #fff;
           background: rgba(255,255,255,0.16);
-          padding: 8px 14px;
+          padding: 6px 12px;
+          font-size: 0.82rem;
           font-weight: 600;
           cursor: pointer;
         }
@@ -378,20 +383,46 @@ class HaSliderDesignCard extends HTMLElement {
     card.oncontextmenu = (event) => this._dispatchAction(this.config.hold_action, event);
     card.ondblclick = (event) => this._dispatchAction(this.config.double_tap_action, event);
 
+    brightnessSlider?.addEventListener("click", (event) => {
+      this._stopEventPropagation(event);
+    });
+
+    brightnessSlider?.addEventListener("pointerdown", (event) => {
+      this._stopEventPropagation(event);
+    });
+
+    brightnessSlider?.addEventListener("input", (event) => {
+      this._stopEventPropagation(event);
+      this._setBrightness(event.target.value);
+    });
+
     brightnessSlider?.addEventListener("change", (event) => {
-      event.stopPropagation();
+      this._stopEventPropagation(event);
       this._setBrightness(event.target.value);
     });
 
     if (supportsColor) {
       const picker = this.shadowRoot.getElementById("color-picker");
       const applyButton = this.shadowRoot.getElementById("color-apply");
+
+      picker?.addEventListener("click", (event) => {
+        this._stopEventPropagation(event);
+      });
+      picker?.addEventListener("pointerdown", (event) => {
+        this._stopEventPropagation(event);
+      });
+      picker?.addEventListener("input", (event) => {
+        this._stopEventPropagation(event);
+      });
       applyButton?.addEventListener("click", (event) => {
-        event.stopPropagation();
+        this._stopEventPropagation(event);
         this._setColor(picker.value || this.config.default_color);
       });
+      applyButton?.addEventListener("pointerdown", (event) => {
+        this._stopEventPropagation(event);
+      });
       picker?.addEventListener("change", (event) => {
-        event.stopPropagation();
+        this._stopEventPropagation(event);
         this._setColor(event.target.value || this.config.default_color);
       });
     }
