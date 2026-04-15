@@ -1,0 +1,408 @@
+class HaSliderDesignCard extends HTMLElement {
+  static getConfigElement() {
+    return document.createElement("ha-slider-design-card-editor");
+  }
+
+  static getStubConfig() {
+    return {
+      type: "custom:ha-slider-design",
+      entity: "light.living_room",
+      name: "Living Room",
+    };
+  }
+
+  setConfig(config) {
+    if (!config.entity) {
+      throw new Error("You must define an entity.");
+    }
+
+    this.config = {
+      name: "",
+      icon: "mdi:lightbulb",
+      background_start: "#ffa20f",
+      background_end: "#ff9800",
+      track_color: "rgba(255,255,255,0.25)",
+      track_inner_color: "rgba(255,255,255,0.45)",
+      knob_color: "#d9d9d9",
+      chip_background: "rgba(216, 133, 0, 0.8)",
+      chip_text_color: "#ffffff",
+      state_text_on: "Active",
+      state_text_off: "Idle",
+      default_color: "#ffd39a",
+      show_power_chip: true,
+      show_color_controls: true,
+      tap_action: { action: "toggle" },
+      hold_action: { action: "more-info" },
+      ...config,
+    };
+
+    this.render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this.render();
+  }
+
+  getCardSize() {
+    return 3;
+  }
+
+  _getStateObj() {
+    return this._hass?.states?.[this.config.entity];
+  }
+
+  _isLightEntity(entityId) {
+    return entityId?.startsWith("light.");
+  }
+
+  _isOn(stateObj) {
+    return stateObj?.state === "on";
+  }
+
+  _supportsColor(stateObj) {
+    if (!stateObj || !this._isLightEntity(this.config.entity)) return false;
+    const colorModes = stateObj.attributes?.supported_color_modes || [];
+    return ["hs", "rgb", "rgbw", "rgbww", "xy", "color_temp"].some((mode) =>
+      colorModes.includes(mode)
+    );
+  }
+
+  _getBrightnessPercent(stateObj) {
+    const bri = stateObj?.attributes?.brightness;
+    if (typeof bri !== "number") return this._isOn(stateObj) ? 100 : 0;
+    return Math.round((bri / 255) * 100);
+  }
+
+  _getHexColor(stateObj) {
+    const rgb = stateObj?.attributes?.rgb_color;
+    if (Array.isArray(rgb) && rgb.length === 3) {
+      return (
+        "#" +
+        rgb
+          .map((value) => {
+            const hex = Number(value).toString(16);
+            return hex.length === 1 ? `0${hex}` : hex;
+          })
+          .join("")
+      );
+    }
+    return this.config.default_color;
+  }
+
+  _getPowerText(stateObj) {
+    if (this.config.power_entity && this._hass?.states?.[this.config.power_entity]) {
+      const powerState = this._hass.states[this.config.power_entity];
+      const unit = powerState.attributes?.unit_of_measurement || "W";
+      const value = Number(powerState.state);
+      return `${Number.isFinite(value) ? value.toFixed(1) : powerState.state} ${unit}`;
+    }
+
+    const value =
+      stateObj?.attributes?.power ||
+      stateObj?.attributes?.current_power_w ||
+      stateObj?.attributes?.power_w;
+
+    if (value == null) return null;
+    const numericValue = Number(value);
+    return `${Number.isFinite(numericValue) ? numericValue.toFixed(1) : value} W`;
+  }
+
+  _dispatchAction(actionConfig, event = null) {
+    if (!actionConfig || actionConfig.action === "none") return;
+    const stateObj = this._getStateObj();
+
+    switch (actionConfig.action) {
+      case "more-info": {
+        this.dispatchEvent(
+          new CustomEvent("hass-more-info", {
+            bubbles: true,
+            composed: true,
+            detail: { entityId: this.config.entity },
+          })
+        );
+        break;
+      }
+      case "toggle": {
+        if (!stateObj) return;
+        const [domain] = this.config.entity.split(".");
+        this._hass.callService(domain, "toggle", { entity_id: this.config.entity });
+        break;
+      }
+      case "call-service": {
+        if (!actionConfig.service) return;
+        const [domain, service] = actionConfig.service.split(".");
+        if (!domain || !service) return;
+        this._hass.callService(domain, service, actionConfig.service_data || {});
+        break;
+      }
+      case "navigate": {
+        if (!actionConfig.navigation_path) return;
+        history.pushState(null, "", actionConfig.navigation_path);
+        window.dispatchEvent(new Event("location-changed"));
+        break;
+      }
+      case "url": {
+        if (!actionConfig.url_path) return;
+        window.open(actionConfig.url_path, "_blank", "noopener");
+        break;
+      }
+      case "fire-dom-event": {
+        this.dispatchEvent(
+          new CustomEvent("ll-custom", {
+            bubbles: true,
+            composed: true,
+            detail: actionConfig,
+          })
+        );
+        break;
+      }
+      default:
+        break;
+    }
+
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }
+
+  _setBrightness(value) {
+    if (!this._hass) return;
+    this._hass.callService("light", "turn_on", {
+      entity_id: this.config.entity,
+      brightness_pct: Number(value),
+    });
+  }
+
+  _setColor(hexColor) {
+    if (!this._hass) return;
+    const cleaned = (hexColor || "").replace("#", "");
+    if (cleaned.length !== 6) return;
+
+    const rgb = [
+      parseInt(cleaned.substring(0, 2), 16),
+      parseInt(cleaned.substring(2, 4), 16),
+      parseInt(cleaned.substring(4, 6), 16),
+    ];
+
+    this._hass.callService("light", "turn_on", {
+      entity_id: this.config.entity,
+      rgb_color: rgb,
+    });
+  }
+
+  render() {
+    if (!this.config || !this._hass) return;
+
+    if (!this.shadowRoot) {
+      this.attachShadow({ mode: "open" });
+    }
+
+    const stateObj = this._getStateObj();
+    const isOn = this._isOn(stateObj);
+    const brightness = this._getBrightnessPercent(stateObj);
+    const powerText = this._getPowerText(stateObj);
+    const hexColor = this._getHexColor(stateObj);
+    const supportsColor = this._supportsColor(stateObj) && this.config.show_color_controls;
+
+    const title = this.config.name || stateObj?.attributes?.friendly_name || this.config.entity;
+    const icon = this.config.icon || stateObj?.attributes?.icon || "mdi:lightbulb";
+    const stateLabel = isOn ? this.config.state_text_on : this.config.state_text_off;
+
+    this.shadowRoot.innerHTML = `
+      <style>
+        :host {
+          display: block;
+        }
+
+        .card {
+          position: relative;
+          box-sizing: border-box;
+          border-radius: 32px;
+          padding: 24px;
+          color: #ffffff;
+          background: linear-gradient(180deg, ${this.config.background_start}, ${this.config.background_end});
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+          overflow: hidden;
+          cursor: pointer;
+          user-select: none;
+        }
+
+        .title {
+          font-size: 2rem;
+          font-weight: 700;
+          line-height: 1.2;
+          text-align: center;
+          margin-bottom: 20px;
+        }
+
+        .slider-shell {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          border-radius: 999px;
+          padding: 16px 18px;
+          border: 4px solid rgba(255,255,255,0.35);
+          background: ${this.config.track_color};
+          backdrop-filter: blur(2px);
+        }
+
+        .icon-chip {
+          width: 70px;
+          height: 70px;
+          min-width: 70px;
+          border-radius: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: ${this.config.knob_color};
+          color: #777;
+        }
+
+        .icon-chip ha-icon {
+          width: 34px;
+          height: 34px;
+        }
+
+        input[type="range"] {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 100%;
+          height: 16px;
+          border-radius: 999px;
+          background: linear-gradient(90deg, ${this.config.track_inner_color} ${brightness}%, rgba(255,255,255,0.16) ${brightness}%);
+          outline: none;
+          cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: ${this.config.knob_color};
+          border: none;
+          box-shadow: 0 3px 8px rgba(0,0,0,0.35);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: ${this.config.knob_color};
+          border: none;
+          box-shadow: 0 3px 8px rgba(0,0,0,0.35);
+        }
+
+        .meta-row {
+          margin-top: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .chip {
+          border-radius: 999px;
+          padding: 10px 20px;
+          font-size: 2rem;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+          background: ${this.config.chip_background};
+          color: ${this.config.chip_text_color};
+          border: 2px solid rgba(255,255,255,0.4);
+        }
+
+        .state-chip {
+          font-size: 0.95rem;
+          font-weight: 600;
+          opacity: 0.9;
+        }
+
+        .color-row {
+          margin-top: 14px;
+          display: grid;
+          grid-template-columns: 1fr auto;
+          gap: 12px;
+          align-items: center;
+        }
+
+        .color-picker {
+          width: 100%;
+          height: 38px;
+          border: 2px solid rgba(255,255,255,0.45);
+          border-radius: 999px;
+          overflow: hidden;
+          cursor: pointer;
+          background: transparent;
+        }
+
+        .color-apply {
+          border: 2px solid rgba(255,255,255,0.45);
+          border-radius: 999px;
+          color: #fff;
+          background: rgba(255,255,255,0.16);
+          padding: 8px 14px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+      </style>
+      <ha-card>
+        <div class="card" id="main-card">
+          <div class="title">${title}</div>
+          <div class="slider-shell">
+            <input id="brightness" type="range" min="1" max="100" value="${brightness}" />
+            <div class="icon-chip"><ha-icon icon="${icon}"></ha-icon></div>
+          </div>
+          <div class="meta-row">
+            ${this.config.show_power_chip && powerText ? `<div class="chip">${powerText}</div>` : ""}
+            <div class="chip state-chip">${stateLabel}</div>
+          </div>
+          ${supportsColor ? `
+            <div class="color-row">
+              <input id="color-picker" class="color-picker" type="color" value="${hexColor}" />
+              <button id="color-apply" class="color-apply" type="button">Apply color</button>
+            </div>
+          ` : ""}
+        </div>
+      </ha-card>
+    `;
+
+    const card = this.shadowRoot.getElementById("main-card");
+    const brightnessSlider = this.shadowRoot.getElementById("brightness");
+
+    card.onclick = () => this._dispatchAction(this.config.tap_action);
+    card.oncontextmenu = (event) => this._dispatchAction(this.config.hold_action, event);
+    card.ondblclick = (event) => this._dispatchAction(this.config.double_tap_action, event);
+
+    brightnessSlider?.addEventListener("change", (event) => {
+      event.stopPropagation();
+      this._setBrightness(event.target.value);
+    });
+
+    if (supportsColor) {
+      const picker = this.shadowRoot.getElementById("color-picker");
+      const applyButton = this.shadowRoot.getElementById("color-apply");
+      applyButton?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        this._setColor(picker.value || this.config.default_color);
+      });
+      picker?.addEventListener("change", (event) => {
+        event.stopPropagation();
+        this._setColor(event.target.value || this.config.default_color);
+      });
+    }
+  }
+}
+
+customElements.define("ha-slider-design", HaSliderDesignCard);
+
+window.customCards = window.customCards || [];
+window.customCards.push({
+  type: "ha-slider-design",
+  name: "HA Slider Design",
+  description: "Slider-style Home Assistant card for dimmable lights with color and power chips.",
+});

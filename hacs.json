@@ -1,0 +1,7 @@
+{
+  "name": "HA Slider Design",
+  "content_in_root": true,
+  "filename": "ha-slider-design.js",
+  "render_readme": true,
+  "homeassistant": "2023.8.0"
+}
