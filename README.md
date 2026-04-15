@@ -70,6 +70,7 @@ state_text_on: "Active"
 state_text_off: "Idle"
 track_color: "rgba(255,255,255,0.25)"
 track_inner_color: "rgba(255,255,255,0.45)"
+slider_height: 68
 knob_color: "#d9d9d9"
 chip_background: "rgba(216, 133, 0, 0.8)"
 chip_text_color: "#ffffff"
@@ -130,6 +131,7 @@ show_color_controls: false
 | `background_end` | string | `#ff9800` | Gradient end color |
 | `track_color` | string | `rgba(255,255,255,0.25)` | Outer slider background |
 | `track_inner_color` | string | `rgba(255,255,255,0.45)` | Filled range color |
+| `slider_height` | number | `84` | Slider container height in pixels (minimum `44`) |
 | `knob_color` | string | `#d9d9d9` | Slider thumb and icon chip color |
 | `chip_background` | string | `rgba(216, 133, 0, 0.8)` | Chip background color |
 | `chip_text_color` | string | `#ffffff` | Chip text color |

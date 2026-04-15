@@ -29,6 +29,7 @@ class HaSliderDesignCard extends HTMLElement {
       state_text_on: "Active",
       state_text_off: "Idle",
       default_color: "#ffd39a",
+      slider_height: 84,
       show_power_chip: true,
       show_state_chip: true,
       show_color_controls: true,
@@ -204,6 +205,12 @@ class HaSliderDesignCard extends HTMLElement {
     event.stopPropagation();
   }
 
+  _getSliderHeight() {
+    const parsedHeight = Number(this.config.slider_height);
+    if (!Number.isFinite(parsedHeight)) return 84;
+    return Math.max(44, parsedHeight);
+  }
+
   render() {
     if (!this.config || !this._hass) return;
 
@@ -218,6 +225,7 @@ class HaSliderDesignCard extends HTMLElement {
     const powerText = this._getPowerText(stateObj);
     const hexColor = this._getHexColor(stateObj);
     const supportsColor = this._supportsColor(stateObj) && this.config.show_color_controls;
+    const sliderHeight = this._getSliderHeight();
 
     const title = this.config.name || stateObj?.attributes?.friendly_name || this.config.entity;
     const icon = this.config.icon || stateObj?.attributes?.icon || "mdi:lightbulb";
@@ -260,6 +268,7 @@ class HaSliderDesignCard extends HTMLElement {
           align-items: center;
           gap: 10px;
           border-radius: 999px;
+          min-height: ${sliderHeight}px;
           padding: 10px 12px;
           border: 3px solid rgba(255,255,255,0.35);
           background: ${this.config.track_color};
@@ -498,6 +507,9 @@ class HaSliderDesignCardEditor extends HTMLElement {
 
     if (target.type === "checkbox") {
       nextConfig[field] = target.checked;
+    } else if (target.type === "number") {
+      const parsedNumber = Number(target.value);
+      nextConfig[field] = Number.isFinite(parsedNumber) ? parsedNumber : target.value;
     } else {
       nextConfig[field] = target.value;
     }
@@ -560,6 +572,16 @@ class HaSliderDesignCardEditor extends HTMLElement {
         <div class="field">
           <label>Icon</label>
           <input data-field="icon" value="${this._config.icon || "mdi:lightbulb"}" />
+        </div>
+        <div class="field">
+          <label>Slider height (px)</label>
+          <input
+            data-field="slider_height"
+            type="number"
+            min="44"
+            step="1"
+            value="${this._config.slider_height ?? 84}"
+          />
         </div>
         <div class="field checkbox">
           <label>Show power chip</label>
