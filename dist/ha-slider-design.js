@@ -30,6 +30,7 @@ class HaSliderDesignCard extends HTMLElement {
       state_text_off: "Idle",
       default_color: "#ffd39a",
       show_power_chip: true,
+      show_state_chip: true,
       show_color_controls: true,
       tap_action: { action: "toggle" },
       hold_action: { action: "more-info" },
@@ -364,7 +365,7 @@ class HaSliderDesignCard extends HTMLElement {
           </div>
           <div class="meta-row">
             ${this.config.show_power_chip && powerText ? `<div class="chip">${powerText}</div>` : ""}
-            <div class="chip state-chip">${stateLabel}</div>
+            ${this.config.show_state_chip ? `<div class="chip state-chip">${stateLabel}</div>` : ""}
           </div>
           ${supportsColor ? `
             <div class="color-row">
@@ -429,11 +430,121 @@ class HaSliderDesignCard extends HTMLElement {
   }
 }
 
+class HaSliderDesignCardEditor extends HTMLElement {
+  setConfig(config) {
+    this._config = { ...config };
+    this.render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this.render();
+  }
+
+  _valueChanged(event) {
+    if (!this._config || !event?.target) return;
+
+    const target = event.target;
+    const field = target.dataset.field;
+    if (!field) return;
+
+    const nextConfig = { ...this._config };
+
+    if (target.type === "checkbox") {
+      nextConfig[field] = target.checked;
+    } else {
+      nextConfig[field] = target.value;
+    }
+
+    this._config = nextConfig;
+    this.dispatchEvent(
+      new CustomEvent("config-changed", {
+        detail: { config: nextConfig },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
+  render() {
+    if (!this._config) return;
+
+    if (!this.shadowRoot) {
+      this.attachShadow({ mode: "open" });
+    }
+
+    this.shadowRoot.innerHTML = `
+      <style>
+        .grid {
+          display: grid;
+          gap: 12px;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        }
+
+        .field {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .field label {
+          font-weight: 600;
+        }
+
+        .field input {
+          padding: 8px;
+          border-radius: 8px;
+          border: 1px solid var(--divider-color, #999);
+        }
+
+        .field.checkbox {
+          flex-direction: row;
+          align-items: center;
+        }
+      </style>
+      <div class="grid">
+        <div class="field">
+          <label>Entity</label>
+          <input data-field="entity" value="${this._config.entity || ""}" />
+        </div>
+        <div class="field">
+          <label>Name</label>
+          <input data-field="name" value="${this._config.name || ""}" />
+        </div>
+        <div class="field">
+          <label>Icon</label>
+          <input data-field="icon" value="${this._config.icon || "mdi:lightbulb"}" />
+        </div>
+        <div class="field checkbox">
+          <label>Show power chip</label>
+          <input data-field="show_power_chip" type="checkbox" ${this._config.show_power_chip !== false ? "checked" : ""} />
+        </div>
+        <div class="field checkbox">
+          <label>Show state chip</label>
+          <input data-field="show_state_chip" type="checkbox" ${this._config.show_state_chip !== false ? "checked" : ""} />
+        </div>
+        <div class="field checkbox">
+          <label>Show color controls</label>
+          <input data-field="show_color_controls" type="checkbox" ${this._config.show_color_controls !== false ? "checked" : ""} />
+        </div>
+      </div>
+    `;
+
+    this.shadowRoot.querySelectorAll("input").forEach((input) => {
+      const eventName = input.type === "checkbox" ? "change" : "input";
+      input.addEventListener(eventName, (event) => this._valueChanged(event));
+    });
+  }
+}
+
 customElements.define("ha-slider-design", HaSliderDesignCard);
+customElements.define("ha-slider-design-card-editor", HaSliderDesignCardEditor);
 
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "ha-slider-design",
   name: "HA Slider Design",
+  preview: true,
   description: "Slider-style Home Assistant card for dimmable lights with color and power chips.",
+  documentationURL: "https://github.com/404GamerNotFound/ha-slider-design",
 });

@@ -4,10 +4,12 @@ A **Home Assistant Lovelace custom card** in the same visual style as `ha-button
 
 - Soft orange gradient card background
 - Rounded inner slider area with icon chip
-- Optional power/energy chip (`W`)
+- Optional power chip (`W`)
+- Optional state chip (`Active` / `Idle`)
 - Light brightness control
-- Light color support with default fallback color
+- Optional light color controls
 - Full tap/hold/double-tap action handling
+- Visual editor support in the dashboard card configuration dialog
 
 ## Donation
 
@@ -30,6 +32,8 @@ If you like this project and want to support development:
 5. Install **HA Slider Design**.
 6. Reload your browser.
 
+After installation, the card is available directly in the dashboard card picker as **HA Slider Design**.
+
 ## Manual installation
 
 1. Copy `ha-slider-design.js` into your Home Assistant `www` folder.
@@ -40,7 +44,9 @@ url: /local/ha-slider-design.js
 type: module
 ```
 
-## Lovelace example
+## Configuration examples
+
+### 1) Full example (all controls visible)
 
 ```yaml
 type: custom:ha-slider-design
@@ -58,6 +64,7 @@ chip_background: "rgba(216, 133, 0, 0.8)"
 chip_text_color: "#ffffff"
 default_color: "#ffd39a"
 show_power_chip: true
+show_state_chip: true
 show_color_controls: true
 power_entity: sensor.living_room_lamp_power
 tap_action:
@@ -69,6 +76,35 @@ double_tap_action:
   service: light.turn_off
   service_data:
     entity_id: light.living_room
+```
+
+### 2) Hide `Active/Idle` state chip
+
+```yaml
+type: custom:ha-slider-design
+entity: light.nanoleaf_elements
+name: NanoLeaf
+show_state_chip: false
+```
+
+### 3) Hide color picker
+
+```yaml
+type: custom:ha-slider-design
+entity: light.kitchen_strip
+name: Kitchen
+show_color_controls: false
+```
+
+### 4) Minimal style (only slider + icon)
+
+```yaml
+type: custom:ha-slider-design
+entity: light.bedroom
+name: Bedroom
+show_power_chip: false
+show_state_chip: false
+show_color_controls: false
 ```
 
 ## Supported configuration
@@ -84,13 +120,14 @@ double_tap_action:
 | `track_color` | string | `rgba(255,255,255,0.25)` | Outer slider background |
 | `track_inner_color` | string | `rgba(255,255,255,0.45)` | Filled range color |
 | `knob_color` | string | `#d9d9d9` | Slider thumb and icon chip color |
-| `chip_background` | string | `rgba(216, 133, 0, 0.8)` | Power/status chip background |
-| `chip_text_color` | string | `#ffffff` | Power/status chip text color |
-| `state_text_on` | string | `Active` | Label when entity is on |
-| `state_text_off` | string | `Idle` | Label when entity is off |
+| `chip_background` | string | `rgba(216, 133, 0, 0.8)` | Chip background color |
+| `chip_text_color` | string | `#ffffff` | Chip text color |
+| `state_text_on` | string | `Active` | State label when entity is on |
+| `state_text_off` | string | `Idle` | State label when entity is off |
 | `default_color` | string | `#ffd39a` | Fallback color for color-enabled lights |
 | `show_power_chip` | boolean | `true` | Show power chip when value exists |
-| `show_color_controls` | boolean | `true` | Show color picker for color-capable lights |
+| `show_state_chip` | boolean | `true` | Show/hide the `Active` / `Idle` state chip |
+| `show_color_controls` | boolean | `true` | Show/hide color picker controls |
 | `power_entity` | string | optional | External sensor for power value |
 | `tap_action` | object | toggle | Home Assistant action |
 | `hold_action` | object | more-info | Home Assistant action |
