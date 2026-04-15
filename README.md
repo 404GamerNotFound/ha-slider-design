@@ -1,0 +1,2 @@
+# ha-slider-design
+
