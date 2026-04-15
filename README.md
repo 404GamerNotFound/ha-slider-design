@@ -8,8 +8,19 @@ A **Home Assistant Lovelace custom card** in the same visual style as `ha-button
 - Optional state chip (`Active` / `Idle`)
 - Light brightness control
 - Optional light color controls
+- Unavailable marker when entity is offline/unavailable
 - Full tap/hold/double-tap action handling
 - Visual editor support in the dashboard card configuration dialog
+
+## Preview
+
+### Card element (`ex1`)
+
+![HA Slider Design card element](images/ex1.png)
+
+### UI controls in edit mode (`ex3`)
+
+![HA Slider Design UI controls in edit mode](images/ex3.png)
 
 ## Donation
 
@@ -138,3 +149,4 @@ show_color_controls: false
 - Brightness slider sends `light.turn_on` with `brightness_pct`.
 - Color picker sends `light.turn_on` with `rgb_color`.
 - If `power_entity` is set, that sensor value is preferred for the power chip.
+- If the entity is unavailable (for example offline), the card shows an `Unavailable` marker and disables controls/actions.

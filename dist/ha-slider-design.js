@@ -61,6 +61,11 @@ class HaSliderDesignCard extends HTMLElement {
     return stateObj?.state === "on";
   }
 
+  _isUnavailable(stateObj) {
+    if (!stateObj) return true;
+    return ["unavailable", "unknown", "none"].includes(String(stateObj.state || "").toLowerCase());
+  }
+
   _supportsColor(stateObj) {
     if (!stateObj || !this._isLightEntity(this.config.entity)) return false;
     const colorModes = stateObj.attributes?.supported_color_modes || [];
@@ -169,7 +174,8 @@ class HaSliderDesignCard extends HTMLElement {
   }
 
   _setBrightness(value) {
-    if (!this._hass) return;
+    const stateObj = this._getStateObj();
+    if (!this._hass || this._isUnavailable(stateObj)) return;
     this._hass.callService("light", "turn_on", {
       entity_id: this.config.entity,
       brightness_pct: Number(value),
@@ -177,7 +183,8 @@ class HaSliderDesignCard extends HTMLElement {
   }
 
   _setColor(hexColor) {
-    if (!this._hass) return;
+    const stateObj = this._getStateObj();
+    if (!this._hass || this._isUnavailable(stateObj)) return;
     const cleaned = (hexColor || "").replace("#", "");
     if (cleaned.length !== 6) return;
 
@@ -205,6 +212,7 @@ class HaSliderDesignCard extends HTMLElement {
     }
 
     const stateObj = this._getStateObj();
+    const isUnavailable = this._isUnavailable(stateObj);
     const isOn = this._isOn(stateObj);
     const brightness = this._getBrightnessPercent(stateObj);
     const powerText = this._getPowerText(stateObj);
@@ -213,7 +221,7 @@ class HaSliderDesignCard extends HTMLElement {
 
     const title = this.config.name || stateObj?.attributes?.friendly_name || this.config.entity;
     const icon = this.config.icon || stateObj?.attributes?.icon || "mdi:lightbulb";
-    const stateLabel = isOn ? this.config.state_text_on : this.config.state_text_off;
+    const stateLabel = isUnavailable ? "Unavailable" : isOn ? this.config.state_text_on : this.config.state_text_off;
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -232,6 +240,11 @@ class HaSliderDesignCard extends HTMLElement {
           overflow: hidden;
           cursor: pointer;
           user-select: none;
+        }
+
+        .card.unavailable {
+          opacity: 0.82;
+          filter: saturate(0.75);
         }
 
         .title {
@@ -327,6 +340,24 @@ class HaSliderDesignCard extends HTMLElement {
           opacity: 0.9;
         }
 
+        .state-chip.unavailable {
+          background: rgba(214, 48, 49, 0.85);
+          color: #fff;
+          border-color: rgba(255,255,255,0.55);
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .state-chip.unavailable::before {
+          content: "";
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: #fff;
+          box-shadow: 0 0 0 2px rgba(255,255,255,0.2);
+        }
+
         .color-row {
           margin-top: 10px;
           display: grid;
@@ -355,22 +386,28 @@ class HaSliderDesignCard extends HTMLElement {
           font-weight: 600;
           cursor: pointer;
         }
+
+        input[disabled],
+        button[disabled] {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
       </style>
       <ha-card>
-        <div class="card" id="main-card">
+        <div class="card ${isUnavailable ? "unavailable" : ""}" id="main-card">
           <div class="title">${title}</div>
           <div class="slider-shell">
-            <input id="brightness" type="range" min="1" max="100" value="${brightness}" />
+            <input id="brightness" type="range" min="1" max="100" value="${brightness}" ${isUnavailable ? "disabled" : ""} />
             <div class="icon-chip"><ha-icon icon="${icon}"></ha-icon></div>
           </div>
           <div class="meta-row">
             ${this.config.show_power_chip && powerText ? `<div class="chip">${powerText}</div>` : ""}
-            ${this.config.show_state_chip ? `<div class="chip state-chip">${stateLabel}</div>` : ""}
+            ${this.config.show_state_chip ? `<div class="chip state-chip ${isUnavailable ? "unavailable" : ""}">${stateLabel}</div>` : ""}
           </div>
           ${supportsColor ? `
             <div class="color-row">
-              <input id="color-picker" class="color-picker" type="color" value="${hexColor}" />
-              <button id="color-apply" class="color-apply" type="button">Apply color</button>
+              <input id="color-picker" class="color-picker" type="color" value="${hexColor}" ${isUnavailable ? "disabled" : ""} />
+              <button id="color-apply" class="color-apply" type="button" ${isUnavailable ? "disabled" : ""}>Apply color</button>
             </div>
           ` : ""}
         </div>
@@ -380,9 +417,18 @@ class HaSliderDesignCard extends HTMLElement {
     const card = this.shadowRoot.getElementById("main-card");
     const brightnessSlider = this.shadowRoot.getElementById("brightness");
 
-    card.onclick = () => this._dispatchAction(this.config.tap_action);
-    card.oncontextmenu = (event) => this._dispatchAction(this.config.hold_action, event);
-    card.ondblclick = (event) => this._dispatchAction(this.config.double_tap_action, event);
+    card.onclick = () => {
+      if (isUnavailable) return;
+      this._dispatchAction(this.config.tap_action);
+    };
+    card.oncontextmenu = (event) => {
+      if (isUnavailable) return;
+      this._dispatchAction(this.config.hold_action, event);
+    };
+    card.ondblclick = (event) => {
+      if (isUnavailable) return;
+      this._dispatchAction(this.config.double_tap_action, event);
+    };
 
     brightnessSlider?.addEventListener("click", (event) => {
       this._stopEventPropagation(event);
