@@ -32,6 +32,7 @@ If you like this project and want to support development:
 
 - Button design: https://github.com/404GamerNotFound/ha-button-design
 - Heat design: https://github.com/404GamerNotFound/ha-heat-design
+- chart design: https://github.com/404GamerNotFound/ha-chart-design
 
 ## HACS installation
 
